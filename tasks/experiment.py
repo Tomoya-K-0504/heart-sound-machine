@@ -58,19 +58,19 @@ def create_manifest():
 
     train = train_dev_label.iloc[:len(dic['train']), :]
     train['file_name'] = dic['train']
-    train = train[train['label'] != 2]
-    train.to_csv(DATA_DIR / 'train_manifest_01.csv', index=False, header=None)
+    # train = train[train['label'] != 2]
+    train.to_csv(DATA_DIR / 'train_manifest.csv', index=False, header=None)
 
     val = train_dev_label.iloc[len(dic['train']):, :]
     assert val.shape[0] == len(dic['devel'])
     val['file_name'] = dic['devel']
-    val = val[val['label'] != 2]
-    val.to_csv(DATA_DIR / 'val_manifest_01.csv', index=False, header=None)
+    # val = val[val['label'] != 2]
+    val.to_csv(DATA_DIR / 'val_manifest.csv', index=False, header=None)
 
     test[0] = dic['test']
     test.columns = ['file_name', 'label']
-    test = test[test['label'] != 2]
-    test.to_csv(DATA_DIR / 'test_manifest_01.csv', index=False, header=None)
+    # test = test[test['label'] != 2]
+    test.to_csv(DATA_DIR / 'test_manifest.csv', index=False, header=None)
 
 
 def set_process_func(cfg, sr):
@@ -135,7 +135,7 @@ if __name__ == '__main__':
 
     uar_res = []
     for seed in range(3):
-        shutil.copy(str(Path(train_conf['model_path']).parent / 'binary_01.pth'), str(train_conf['model_path']))
+        # shutil.copy(str(Path(train_conf['model_path']).parent / 'binary_01.pth'), str(train_conf['model_path']))
         train_conf['seed'] = seed
         # train_conf['cnn_channel_list'] = channel_list
         # train_conf['cnn_kernel_sizes'] = [[c] for c in kernel_list]
