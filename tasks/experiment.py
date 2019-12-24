@@ -14,6 +14,7 @@ from ml.src.dataloader import set_dataloader, set_ml_dataloader
 from ml.src.signal_processor import to_spect, standardize
 from ml.models.model_manager import model_manager_args, BaseModelManager
 from ml.src.preprocessor import Preprocessor, preprocess_args
+from ml.models.pretrained_models import supported_pretrained_models
 from dataset import ManualDataSet
 from ml.src.metrics import metrics2df, Metric
 
@@ -133,39 +134,16 @@ if __name__ == '__main__':
 
     # create_manifest()
 
-    uar_res = []
-    for seed in range(3):
-        # shutil.copy(str(Path(train_conf['model_path']).parent / 'binary_01.pth'), str(train_conf['model_path']))
-        train_conf['seed'] = seed
-        # train_conf['cnn_channel_list'] = channel_list
-        # train_conf['cnn_kernel_sizes'] = [[c] for c in kernel_list]
-        # train_conf['cnn_stride_sizes'] = [[c] for c in stride_list]
-        # train_conf['cnn_padding_sizes'] = [[c] for c in padding_list]
-        uar_res.append(experiment(train_conf))
+    results = {}
+    for model in supported_pretrained_models.keys():
+        uar_res = []
+        for seed in range(3):
+            train_conf['seed'] = seed
+            uar_res.append(experiment(train_conf))
 
-    print(np.array(uar_res).mean())
-    print(np.array(uar_res).std())
+        print(np.array(uar_res).mean())
+        print(np.array(uar_res).std())
+        results[model] = np.array(uar_res).mean()
 
-    # expt = {}
-    # padding_list = [0, 0]
-    # for channel_list in [[3, 9], [4, 16], [8, 64]]:
-    #     for kernel_list in [[2, 2], [4, 2], [4, 4]]:
-    #         for stride_list in [[2, 2], [4, 2], [4, 4]]:
-    #             # returns loss or accuracy
-    #             ua_res = []
-    #             for seed in range(10):
-    #                 train_conf['seed'] = seed
-    #                 train_conf['cnn_channel_list'] = channel_list
-    #                 train_conf['cnn_kernel_sizes'] = [[c] for c in kernel_list]
-    #                 train_conf['cnn_stride_sizes'] = [[c] for c in stride_list]
-    #                 train_conf['cnn_padding_sizes'] = [[c] for c in padding_list]
-    #                 ua_res.append(experiment(train_conf))
-    #
-    #             print(np.array(ua_res).mean())
-    #             print(np.array(ua_res).std())
-    #
-    #             expt_id = 'channel-' + '-'.join(list(map(str, channel_list))) + '_' + 'kernel-' + '-'.join(
-    #                 list(map(str, kernel_list))) + '_' + 'stride-' + '-'.join(list(map(str, stride_list)))
-    #             expt[expt_id] = np.array(ua_res).mean()
-    #
-    # print(expt)
+    expt_path = Path(__file__).resolve().parent.parent / 'output' / f"{train_conf['expt_id']}.txt"
+    pd.DataFrame(results).to_csv(expt_path, index=False)
