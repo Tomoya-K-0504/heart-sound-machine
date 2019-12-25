@@ -5,6 +5,8 @@ import pandas as pd
 from librosa.core import load
 from librosa.output import write_wav
 from tqdm import tqdm
+import warnings
+warnings.filterwarnings('ignore')
 
 
 def split_audio(audio, sr, audio_length=30, length=10, overlap=5):
@@ -23,8 +25,9 @@ def split_audio(audio, sr, audio_length=30, length=10, overlap=5):
 
 
 def main():
-    DATA_DIR = Path(__file__).resolve().parents[1] / 'input'
+    DATA_DIR = Path(__file__).resolve().parent / 'input'
     phases = ['train', 'devel', 'test']
+    binary_label_converter = {0: 0, 1: 1, 2: 1}
 
     dic = {}
     for phase in phases:
@@ -47,21 +50,27 @@ def main():
     wav_out_dir = DATA_DIR / 'db1-5' / 'wav'
     wav_out_dir.mkdir(exist_ok=True, parents=True)
 
-    for phase, df in tqdm(zip(phases, [train, dev, test])):
+    for phase, df in tqdm(zip(phases, [train, dev, test]), total=3):
         label_dic = {'file_name': [], 'label': []}
+        binary_label_dic = {'file_name': [], 'label': []}
 
         for _, row in df.iterrows():
             wave, sr = load(row['file_name'], sr=4000)
             wave_sections = split_audio(wave, sr=sr)
             for i, section in enumerate(wave_sections):
-                file_name = Path(row['file_name']).name.replace('.wav', f'_{i + 1}.wav')    
+                file_name = Path(row['file_name']).name.replace('.wav', f'_{i + 1}.wav')
                 write_wav(wav_out_dir / file_name, section, sr)
                 label_dic['file_name'].append(file_name)
                 label_dic['label'].append(row['label'])
+                binary_label_dic['file_name'].append(file_name)
+                binary_label_dic['label'].append(binary_label_converter[row['label']])
 
         (wav_out_dir.parent / 'lab').mkdir(exist_ok=True)
+        (wav_out_dir.parent / 'binary_lab').mkdir(exist_ok=True)
         label_file_path = wav_out_dir.parent / 'lab' / f'labels_{phase}.tsv'
         pd.DataFrame(label_dic).to_csv(label_file_path, index=False, sep='\t')
+        label_file_path = wav_out_dir.parent / 'binary_lab' / f'labels_{phase}.tsv'
+        pd.DataFrame(binary_label_dic).to_csv(label_file_path, index=False, sep='\t')
 
 
 if __name__ == '__main__':

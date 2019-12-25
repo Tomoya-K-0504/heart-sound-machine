@@ -20,6 +20,8 @@ from ml.src.metrics import metrics2df, Metric
 
 
 DATALOADERS = {'normal': set_dataloader, 'ml': set_ml_dataloader}
+ONE_AUDIO_SEC = 10
+SR = 4000
 
 
 def train_args(parser):
@@ -36,8 +38,8 @@ def label_func(row):
 
 
 def load_func(path):
-    const_length = 4000 * 30
-    wave = load(path[0], sr=4000)[0]
+    const_length = SR * ONE_AUDIO_SEC
+    wave = load(path[0], sr=SR)[0]
     if wave.shape[0] > const_length:
         wave = wave[:const_length]
     elif wave.shape[0] < const_length:
@@ -49,39 +51,41 @@ def load_func(path):
 def create_manifest():
     DATA_DIR = Path(__file__).resolve().parents[1] / 'input'
 
-    dic = {}
-    for phase in ['train', 'devel', 'test']:
-        dic[phase] = [str(p.resolve()) for p in (DATA_DIR / 'wav').iterdir() if phase in p.name]
-        dic[phase].sort()
+    # db = '1'
+    db = '1.5'
+    if db == '1':
+        dic = {}
+        for phase in ['train', 'devel', 'test']:
+            dic[phase] = [str(p.resolve()) for p in (DATA_DIR / 'wav').iterdir() if phase in p.name]
+            dic[phase].sort()
 
-    train_dev_label = pd.read_csv(DATA_DIR / 'lab' / 'labels_train_dev.tsv', sep='\t')
-    test = pd.read_csv(DATA_DIR / 'lab' / 'labels_test.txt', header=None)
+        train_dev_label = pd.read_csv(DATA_DIR / 'lab' / 'labels_train_dev.tsv', sep='\t')
+        test = pd.read_csv(DATA_DIR / 'lab' / 'labels_test.txt', header=None)
 
-    train = train_dev_label.iloc[:len(dic['train']), :]
-    train['file_name'] = dic['train']
-    # train = train[train['label'] != 2]
-    train.to_csv(DATA_DIR / 'train_manifest.csv', index=False, header=None)
+        train = train_dev_label.iloc[:len(dic['train']), :]
+        train['file_name'] = dic['train']
+        # train = train[train['label'] != 2]
+        train.to_csv(DATA_DIR / 'train_manifest.csv', index=False, header=None)
 
-    val = train_dev_label.iloc[len(dic['train']):, :]
-    assert val.shape[0] == len(dic['devel'])
-    val['file_name'] = dic['devel']
-    # val = val[val['label'] != 2]
-    val.to_csv(DATA_DIR / 'val_manifest.csv', index=False, header=None)
+        val = train_dev_label.iloc[len(dic['train']):, :]
+        assert val.shape[0] == len(dic['devel'])
+        val['file_name'] = dic['devel']
+        # val = val[val['label'] != 2]
+        val.to_csv(DATA_DIR / 'val_manifest.csv', index=False, header=None)
 
-    test[0] = dic['test']
-    test.columns = ['file_name', 'label']
-    # test = test[test['label'] != 2]
-    test.to_csv(DATA_DIR / 'test_manifest.csv', index=False, header=None)
+        test[0] = dic['test']
+        test.columns = ['file_name', 'label']
+        # test = test[test['label'] != 2]
+        test.to_csv(DATA_DIR / 'test_manifest.csv', index=False, header=None)
 
+    elif db == '1.5':
+        for phase in ['train', 'devel', 'test']:
+            phase_dic = [str(p.resolve()) for p in (DATA_DIR / 'db1-5' / 'wav').iterdir() if phase in p.name]
+            phase_dic.sort()
 
-def set_process_func(cfg, sr):
-    preprocessor = Preprocessor(cfg, phase='test', sr=sr)
-
-    def process_func(wave, label):
-        y = preprocessor.transform(wave)
-        return standardize(y), label
-
-    return process_func
+            df = pd.read_csv(DATA_DIR / 'db1-5' / 'lab' / f'labels_{phase}.tsv', sep='\t')
+            df['file_name'] = phase_dic
+            df.to_csv(DATA_DIR / f'db15_{phase}_manifest.csv', index=False, header=None)
 
 
 def experiment(train_conf) -> float:
@@ -131,7 +135,7 @@ if __name__ == '__main__':
     assert train_conf['train_path'] != '' or train_conf['val_path'] != '', \
         'You need to select training, validation data file to training, validation in --train-path, --val-path argments'
 
-    # create_manifest()
+    create_manifest()
 
     results = []
     for model in supported_pretrained_models.keys():
