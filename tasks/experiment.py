@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 import torch
 from ml.src.dataloader import set_dataloader, set_ml_dataloader
-from ml.src.signal_processor import to_spect, standardize
+from ml.src.signal_processor import to_spect, standardize, cwt
 from ml.models.model_manager import model_manager_args, BaseModelManager
 from ml.src.preprocessor import Preprocessor, preprocess_args
 from ml.models.pretrained_models import supported_pretrained_models
@@ -75,11 +75,10 @@ def create_manifest():
 
 
 def set_process_func(cfg, sr):
-    window_size = cfg['window_size']
-    window_stride = cfg['window_stride']
+    preprocessor = Preprocessor(cfg, phase='test', sr=sr)
 
     def process_func(wave, label):
-        y = to_spect(wave, sr, window_size, window_stride, window='hamming')  # channel x freq x time
+        y = preprocessor.transform(wave)
         return standardize(y), label
 
     return process_func
@@ -134,8 +133,11 @@ if __name__ == '__main__':
 
     # create_manifest()
 
-    results = {}
+    results = []
     for model in supported_pretrained_models.keys():
+        if model != 'densenet': continue
+        train_conf['model_type'] = model
+        train_conf['log_id'] = model + '-normal'
         uar_res = []
         for seed in range(3):
             train_conf['seed'] = seed
@@ -143,7 +145,8 @@ if __name__ == '__main__':
 
         print(np.array(uar_res).mean())
         print(np.array(uar_res).std())
-        results[model] = np.array(uar_res).mean()
+        results.append(np.array(uar_res).mean())
 
-    expt_path = Path(__file__).resolve().parent.parent / 'output' / f"{train_conf['expt_id']}.txt"
-    pd.DataFrame(results).to_csv(expt_path, index=False)
+    expt_path = Path(__file__).resolve().parent.parent / 'output' / f"{train_conf['log_id']}.csv"
+    print(results)
+    # pd.DataFrame(results, index=list(supported_pretrained_models.keys())).T.to_csv(expt_path, index=False)
