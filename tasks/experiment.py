@@ -6,25 +6,21 @@ import numpy as np
 import pandas as pd
 from dataset import ManualDataSet
 from librosa.core import load
-from ml.models.model_manager import model_manager_args, BaseModelManager
+from ml.models.model_manager import BaseModelManager
 from ml.models.pretrained_models import supported_pretrained_models
-from ml.models.model_manager import supported_ml_models
 from ml.src.dataloader import set_dataloader, set_ml_dataloader
 from ml.src.metrics import metrics2df, Metric
 from ml.src.preprocessor import Preprocessor, preprocess_args
 from ml.tasks.train_manager import TrainManager, train_manager_args
 
 DATALOADERS = {'normal': set_dataloader, 'ml': set_ml_dataloader}
-ONE_AUDIO_SEC = 10
-SR = 4000
-# ONE_AUDIO_SEC = 60
-# SR = 2000
 
 
 def train_args(parser):
     train_manager_args(parser)
     expt_parser = parser.add_argument_group("Experiment arguments")
     expt_parser.add_argument('--expt-id', help='data file for training', default='')
+    expt_parser.add_argument('--data-source', help='HSS 1.0 or CinC', default='HSS', choices=['HSS', 'CinC'])
     expt_parser.add_argument('--dataloader-type', help='Dataloader type.', choices=['normal', 'ml'], default='normal')
 
     return parser
@@ -36,15 +32,18 @@ def label_func(row):
     return row[1]
 
 
-def load_func(path):
-    const_length = SR * ONE_AUDIO_SEC
-    wave = load(path[0], sr=SR)[0]
-    if wave.shape[0] > const_length:
-        wave = wave[:const_length]
-    elif wave.shape[0] < const_length:
-        n_pad = (const_length - wave.shape[0]) // 2 + 1
-        wave = np.pad(wave[:const_length], n_pad)[:const_length]
-    return wave.reshape((1, -1))
+def set_load_func(sr, one_audio_sec):
+    def load_func(path):
+        const_length = sr * one_audio_sec
+        wave = load(path[0], sr=sr)[0]
+        if wave.shape[0] > const_length:
+            wave = wave[:const_length]
+        elif wave.shape[0] < const_length:
+            n_pad = (const_length - wave.shape[0]) // 2 + 1
+            wave = np.pad(wave[:const_length], n_pad)[:const_length]
+        return wave.reshape((1, -1))
+
+    return load_func
 
 
 def create_manifest():
@@ -87,26 +86,26 @@ def create_manifest():
             df.to_csv(DATA_DIR / f'db15_{phase}_manifest.csv', index=False, header=None)
 
 
-# def create_cinc_manifest():
-#     DATA_DIR = Path(__file__).resolve().parents[1] / 'input'
-#
-#     head_paths = []
-#     wav_paths = []
-#     training_folders = [path.resolve() for path in (DATA_DIR / 'cinc').iterdir() if path.name.startswith('training-')]
-#     for training_folder in training_folders:
-#         head_paths.extend([p for p in training_folder.iterdir() if p.name.endswith('.hea')])
-#         wav_paths.extend([p for p in training_folder.iterdir() if p.name.endswith('.wav')])
-#     head_paths.sort()
-#     wav_paths.sort()
-#
-#     labels = []
-#     for head, wav in zip(head_paths, wav_paths):
-#         assert head.name[:-4] == wav.name[:-4]
-#         with open(head, 'r') as f:
-#             labels.append(f.read().split('# ')[-1].replace('\n', ''))
-#
-#     manifest = pd.DataFrame([wav_paths, labels]).T
-#     manifest.to_csv(DATA_DIR / 'cinc_manifest.csv', header=None, index=False)
+def create_cinc_manifest():
+    DATA_DIR = Path(__file__).resolve().parents[1] / 'input'
+
+    head_paths = []
+    wav_paths = []
+    training_folders = [path.resolve() for path in (DATA_DIR / 'cinc').iterdir() if path.name.startswith('training-')]
+    for training_folder in training_folders:
+        head_paths.extend([p for p in training_folder.iterdir() if p.name.endswith('.hea')])
+        wav_paths.extend([p for p in training_folder.iterdir() if p.name.endswith('.wav')])
+    head_paths.sort()
+    wav_paths.sort()
+
+    labels = []
+    for head, wav in zip(head_paths, wav_paths):
+        assert head.name[:-4] == wav.name[:-4]
+        with open(head, 'r') as f:
+            labels.append(f.read().split('# ')[-1].replace('\n', ''))
+
+    manifest = pd.DataFrame([wav_paths, labels]).T
+    manifest.to_csv(DATA_DIR / 'cinc_manifest.csv', header=None, index=False)
 
 
 def experiment(train_conf) -> float:
@@ -119,11 +118,13 @@ def experiment(train_conf) -> float:
 
     train_conf['prev_classes'] = [0, 1]
 
+    one_audio_sec = 10
     sr = 4000
 
     dataloaders = {}
     for phase in phases:
         process_func = Preprocessor(train_conf, phase, sr).preprocess
+        load_func = set_load_func(sr, one_audio_sec)
         dataset = ManualDataSet(train_conf[f'{phase}_path'], train_conf, load_func, process_func, label_func, phase)
         dataloaders[phase] = DATALOADERS[train_conf['dataloader_type']](dataset, phase, train_conf)
 
@@ -152,6 +153,8 @@ def experiment(train_conf) -> float:
 
 def cv_experiment(train_conf) -> float:
     phases = ['train', 'val', 'test']
+    one_audio_sec = 60
+    sr = 2000
 
     if train_conf['task_type'] == 'regress':
         train_conf['class_names'] = [0]
@@ -162,13 +165,14 @@ def cv_experiment(train_conf) -> float:
 
     dataset_cls = ManualDataSet
     set_dataloader_func = set_dataloader
-    process_func = Preprocessor(train_conf, phase='test', sr=SR).preprocess
+    process_func = Preprocessor(train_conf, phase='test', sr=sr).preprocess
 
     metrics = [
         Metric('loss', direction='minimize', save_model=True),
         Metric('uar', direction='maximize'),
     ]
 
+    load_func = set_load_func(sr, one_audio_sec)
     train_manager = TrainManager(train_conf, load_func, label_func, dataset_cls, set_dataloader_func, metrics,
                                  process_func=process_func)
     model_manager, test_cv_metrics = train_manager.train_test()
@@ -191,21 +195,25 @@ if __name__ == '__main__':
     assert train_conf['train_path'] != '' or train_conf['val_path'] != '', \
         'You need to select training, validation data file to training, validation in --train-path, --val-path argments'
 
-    create_manifest()
+    if train_conf['data_source'] == 'HSS':
+        create_manifest()
+    elif train_conf['data_source'] == 'CinC':
+        create_cinc_manifest()
 
     results = []
     for model in supported_pretrained_models.keys():
     # for model in supported_ml_models:
-        # if model != 'densenet': continue
+    #     if model in ('wideresnet', 'resnext'): continue
         train_conf['model_type'] = model
+        print(model)
         # train_conf['log_id'] = model + '-normal'
         uar_res = []
 
-        if True:
+        if train_conf['data_source'] == 'HSS':
             for seed in range(3):
                 train_conf['seed'] = seed
                 uar_res.append(experiment(train_conf))
-        else:
+        elif train_conf['data_source'] == 'CinC':
             uar_res.append(cv_experiment(train_conf))
 
         print(np.array(uar_res).mean())
