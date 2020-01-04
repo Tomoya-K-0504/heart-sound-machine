@@ -8,16 +8,17 @@ from dataset import ManualDataSet
 from librosa.core import load
 from ml.models.model_manager import model_manager_args, BaseModelManager
 from ml.models.pretrained_models import supported_pretrained_models
+from ml.models.model_manager import supported_ml_models
 from ml.src.dataloader import set_dataloader, set_ml_dataloader
 from ml.src.metrics import metrics2df, Metric
 from ml.src.preprocessor import Preprocessor, preprocess_args
 from ml.tasks.train_manager import TrainManager, train_manager_args
 
 DATALOADERS = {'normal': set_dataloader, 'ml': set_ml_dataloader}
-# ONE_AUDIO_SEC = 10
-# SR = 4000
-ONE_AUDIO_SEC = 60
-SR = 2000
+ONE_AUDIO_SEC = 10
+SR = 4000
+# ONE_AUDIO_SEC = 60
+# SR = 2000
 
 
 def train_args(parser):
@@ -31,8 +32,8 @@ def train_args(parser):
 
 def label_func(row):
     converter = {'Normal': 0, 'Abnormal': 1}
-    return converter[row[1]]
-    # return row[1]
+    # return converter[row[1]]
+    return row[1]
 
 
 def load_func(path):
@@ -46,66 +47,66 @@ def load_func(path):
     return wave.reshape((1, -1))
 
 
-# def create_manifest():
-#     DATA_DIR = Path(__file__).resolve().parents[1] / 'input'
-#
-#     # db = '1'
-#     db = '1.5'
-#     if db == '1':
-#         dic = {}
-#         for phase in ['train', 'devel', 'test']:
-#             dic[phase] = [str(p.resolve()) for p in (DATA_DIR / 'wav').iterdir() if phase in p.name]
-#             dic[phase].sort()
-#
-#         train_dev_label = pd.read_csv(DATA_DIR / 'lab' / 'labels_train_dev.tsv', sep='\t')
-#         test = pd.read_csv(DATA_DIR / 'lab' / 'labels_test.txt', header=None)
-#
-#         train = train_dev_label.iloc[:len(dic['train']), :]
-#         train['file_name'] = dic['train']
-#         # train = train[train['label'] != 2]
-#         train.to_csv(DATA_DIR / 'train_manifest.csv', index=False, header=None)
-#
-#         val = train_dev_label.iloc[len(dic['train']):, :]
-#         assert val.shape[0] == len(dic['devel'])
-#         val['file_name'] = dic['devel']
-#         # val = val[val['label'] != 2]
-#         val.to_csv(DATA_DIR / 'val_manifest.csv', index=False, header=None)
-#
-#         test[0] = dic['test']
-#         test.columns = ['file_name', 'label']
-#         # test = test[test['label'] != 2]
-#         test.to_csv(DATA_DIR / 'test_manifest.csv', index=False, header=None)
-#
-#     elif db == '1.5':
-#         for phase in ['train', 'devel', 'test']:
-#             phase_dic = [str(p.resolve()) for p in (DATA_DIR / 'db1-5' / 'wav').iterdir() if phase in p.name]
-#             phase_dic.sort()
-#
-#             df = pd.read_csv(DATA_DIR / 'db1-5' / 'lab' / f'labels_{phase}.tsv', sep='\t')
-#             df['file_name'] = phase_dic
-#             df.to_csv(DATA_DIR / f'db15_{phase}_manifest.csv', index=False, header=None)
-
-
 def create_manifest():
     DATA_DIR = Path(__file__).resolve().parents[1] / 'input'
 
-    head_paths = []
-    wav_paths = []
-    training_folders = [path.resolve() for path in (DATA_DIR / 'cinc').iterdir() if path.name.startswith('training-')]
-    for training_folder in training_folders:
-        head_paths.extend([p for p in training_folder.iterdir() if p.name.endswith('.hea')])
-        wav_paths.extend([p for p in training_folder.iterdir() if p.name.endswith('.wav')])
-    head_paths.sort()
-    wav_paths.sort()
+    db = '1'
+    # db = '1.5'
+    if db == '1':
+        dic = {}
+        for phase in ['train', 'devel', 'test']:
+            dic[phase] = [str(p.resolve()) for p in (DATA_DIR / 'wav').iterdir() if phase in p.name]
+            dic[phase].sort()
 
-    labels = []
-    for head, wav in zip(head_paths, wav_paths):
-        assert head.name[:-4] == wav.name[:-4]
-        with open(head, 'r') as f:
-            labels.append(f.read().split('# ')[-1].replace('\n', ''))
+        train_dev_label = pd.read_csv(DATA_DIR / 'lab' / 'labels_train_dev.tsv', sep='\t')
+        test = pd.read_csv(DATA_DIR / 'lab' / 'labels_test.txt', header=None)
 
-    manifest = pd.DataFrame([wav_paths, labels]).T
-    manifest.to_csv(DATA_DIR / 'cinc_manifest.csv', header=None, index=False)
+        train = train_dev_label.iloc[:len(dic['train']), :]
+        train['file_name'] = dic['train']
+        # train = train[train['label'] != 2]
+        train.to_csv(DATA_DIR / 'train_manifest.csv', index=False, header=None)
+
+        val = train_dev_label.iloc[len(dic['train']):, :]
+        assert val.shape[0] == len(dic['devel'])
+        val['file_name'] = dic['devel']
+        # val = val[val['label'] != 2]
+        val.to_csv(DATA_DIR / 'val_manifest.csv', index=False, header=None)
+
+        test[0] = dic['test']
+        test.columns = ['file_name', 'label']
+        # test = test[test['label'] != 2]
+        test.to_csv(DATA_DIR / 'test_manifest.csv', index=False, header=None)
+
+    elif db == '1.5':
+        for phase in ['train', 'devel', 'test']:
+            phase_dic = [str(p.resolve()) for p in (DATA_DIR / 'db1-5' / 'wav').iterdir() if phase in p.name]
+            phase_dic.sort()
+
+            df = pd.read_csv(DATA_DIR / 'db1-5' / 'lab' / f'labels_{phase}.tsv', sep='\t')
+            df['file_name'] = phase_dic
+            df.to_csv(DATA_DIR / f'db15_{phase}_manifest.csv', index=False, header=None)
+
+
+# def create_cinc_manifest():
+#     DATA_DIR = Path(__file__).resolve().parents[1] / 'input'
+#
+#     head_paths = []
+#     wav_paths = []
+#     training_folders = [path.resolve() for path in (DATA_DIR / 'cinc').iterdir() if path.name.startswith('training-')]
+#     for training_folder in training_folders:
+#         head_paths.extend([p for p in training_folder.iterdir() if p.name.endswith('.hea')])
+#         wav_paths.extend([p for p in training_folder.iterdir() if p.name.endswith('.wav')])
+#     head_paths.sort()
+#     wav_paths.sort()
+#
+#     labels = []
+#     for head, wav in zip(head_paths, wav_paths):
+#         assert head.name[:-4] == wav.name[:-4]
+#         with open(head, 'r') as f:
+#             labels.append(f.read().split('# ')[-1].replace('\n', ''))
+#
+#     manifest = pd.DataFrame([wav_paths, labels]).T
+#     manifest.to_csv(DATA_DIR / 'cinc_manifest.csv', header=None, index=False)
 
 
 def experiment(train_conf) -> float:
@@ -124,7 +125,7 @@ def experiment(train_conf) -> float:
     for phase in phases:
         process_func = Preprocessor(train_conf, phase, sr).preprocess
         dataset = ManualDataSet(train_conf[f'{phase}_path'], train_conf, load_func, process_func, label_func, phase)
-        dataloaders[phase] = set_dataloader(dataset, phase, train_conf)
+        dataloaders[phase] = DATALOADERS[train_conf['dataloader_type']](dataset, phase, train_conf)
 
     metrics = [
         Metric('loss', direction='minimize', save_model=True),
@@ -155,7 +156,7 @@ def cv_experiment(train_conf) -> float:
     if train_conf['task_type'] == 'regress':
         train_conf['class_names'] = [0]
     else:
-        train_conf['class_names'] = [0, 1, 2]
+        train_conf['class_names'] = [0, 1]
 
     train_conf['prev_classes'] = [0, 1]
 
@@ -190,16 +191,17 @@ if __name__ == '__main__':
     assert train_conf['train_path'] != '' or train_conf['val_path'] != '', \
         'You need to select training, validation data file to training, validation in --train-path, --val-path argments'
 
-    # create_manifest()
+    create_manifest()
 
     results = []
     for model in supported_pretrained_models.keys():
-        if model != 'densenet': continue
+    # for model in supported_ml_models:
+        # if model != 'densenet': continue
         train_conf['model_type'] = model
         # train_conf['log_id'] = model + '-normal'
         uar_res = []
 
-        if False:
+        if True:
             for seed in range(3):
                 train_conf['seed'] = seed
                 uar_res.append(experiment(train_conf))
