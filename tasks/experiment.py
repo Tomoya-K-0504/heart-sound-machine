@@ -28,8 +28,8 @@ def train_args(parser):
 
 def label_func(row):
     converter = {'Normal': 0, 'Abnormal': 1}
-    # return converter[row[1]]
-    return row[1]
+    return converter[row[1]]
+    # return row[1]
 
 
 def set_load_func(sr, one_audio_sec):
@@ -186,7 +186,7 @@ def cv_experiment(train_conf) -> float:
     metrics2df(test_cv_metrics, phase='test').to_csv(
         Path(__file__).resolve().parent.parent / 'output' / 'metrics' / f"{train_conf['log_id']}_test.csv", index=False)
 
-    return np.array([metric.average_meter['test'].value for metric in test_cv_metrics if metric.name == 'uar']).mean()
+    return test_cv_metrics['uar'].mean()
 
 
 if __name__ == '__main__':
@@ -201,12 +201,14 @@ if __name__ == '__main__':
         create_cinc_manifest()
 
     results = []
-    for model in supported_pretrained_models.keys():
+    # for model in supported_pretrained_models.keys():
+    for preprocess in ['spectrogram', 'logmel']:
     # for model in supported_ml_models:
     #     if model in ('wideresnet', 'resnext'): continue
-        train_conf['model_type'] = model
-        print(model)
-        # train_conf['log_id'] = model + '-normal'
+    #     train_conf['model_type'] = model
+    #     print(model)
+        train_conf['transform'] = preprocess
+        train_conf['log_id'] = 'mobilenet-' + preprocess
         uar_res = []
 
         if train_conf['data_source'] == 'HSS':
