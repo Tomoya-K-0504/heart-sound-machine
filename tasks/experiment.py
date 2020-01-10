@@ -202,13 +202,13 @@ if __name__ == '__main__':
 
     results = []
     # for model in supported_pretrained_models.keys():
-    for preprocess in ['spectrogram', 'logmel']:
+    for preprocess in ['spectrogram']:#, 'logmel']:
     # for model in supported_ml_models:
     #     if model in ('wideresnet', 'resnext'): continue
     #     train_conf['model_type'] = model
     #     print(model)
-        train_conf['transform'] = preprocess
-        train_conf['log_id'] = 'mobilenet-' + preprocess
+    #     train_conf['transform'] = preprocess
+    #     train_conf['log_id'] = 'mobilenet-' + preprocess
         uar_res = []
 
         if train_conf['data_source'] == 'HSS':
