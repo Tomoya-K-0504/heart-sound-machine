@@ -12,6 +12,7 @@ from ml.src.dataloader import set_dataloader, set_ml_dataloader
 from ml.src.metrics import metrics2df, Metric
 from ml.src.preprocessor import Preprocessor, preprocess_args
 from ml.tasks.train_manager import TrainManager, train_manager_args
+from ml.src.gradcam import gradcam_main
 
 DATALOADERS = {'normal': set_dataloader, 'ml': set_ml_dataloader}
 
@@ -22,6 +23,7 @@ def train_args(parser):
     expt_parser.add_argument('--expt-id', help='data file for training', default='')
     expt_parser.add_argument('--data-source', help='HSS 1.0 or CinC', default='HSS', choices=['HSS', 'CinC'])
     expt_parser.add_argument('--dataloader-type', help='Dataloader type.', choices=['normal', 'ml'], default='normal')
+    expt_parser.add_argument('--gradcam', action='store_true', default=False)
 
     return parser
 
@@ -195,18 +197,32 @@ if __name__ == '__main__':
     assert train_conf['train_path'] != '' or train_conf['val_path'] != '', \
         'You need to select training, validation data file to training, validation in --train-path, --val-path argments'
 
+    if train_conf['gradcam']:
+        # Gradcam
+        assert train_conf['data_source'] == 'CinC', 'now CinC visualization is only available'
+        train_conf['class_names'] = [0, 1]
+        load_func = set_load_func(sr=2000, one_audio_sec=60)
+        process_func = Preprocessor(train_conf, phase='test', sr=2000).preprocess
+        dataset = ManualDataSet(train_conf['manifest_path'], train_conf,
+                                load_func=load_func, label_func=label_func, process_func=process_func)
+        dataloader = set_dataloader(dataset, 'test', train_conf)
+        load_func = set_load_func(sr=2000, one_audio_sec=60)
+
+        gradcam_main(train_conf, dataloader, load_func)
+        exit()
+
     if train_conf['data_source'] == 'HSS':
         create_manifest()
     elif train_conf['data_source'] == 'CinC':
         create_cinc_manifest()
 
     results = []
-    # for model in supported_pretrained_models.keys():
-    for preprocess in ['spectrogram']:#, 'logmel']:
+    for model in ['vgg', 'resnet', 'mobilenet', 'resnext', 'panns']:
+    # for preprocess in ['spectrogram']:#, 'logmel']:
     # for model in supported_ml_models:
     #     if model in ('wideresnet', 'resnext'): continue
-    #     train_conf['model_type'] = model
-    #     print(model)
+        train_conf['model_type'] = model
+        print(model)
     #     train_conf['transform'] = preprocess
     #     train_conf['log_id'] = 'mobilenet-' + preprocess
         uar_res = []
