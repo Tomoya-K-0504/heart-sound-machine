@@ -28,10 +28,13 @@ def train_args(parser):
     return parser
 
 
-def label_func(row):
+def hss_label_func(row):
+    return row[1]
+
+
+def cinc_label_func(row):
     converter = {'Normal': 0, 'Abnormal': 1}
     return converter[row[1]]
-    # return row[1]
 
 
 def set_load_func(sr, one_audio_sec):
@@ -48,7 +51,7 @@ def set_load_func(sr, one_audio_sec):
     return load_func
 
 
-def create_manifest():
+def create_hss_manifest():
     DATA_DIR = Path(__file__).resolve().parents[1] / 'input'
 
     db = '1'
@@ -110,7 +113,7 @@ def create_cinc_manifest():
     manifest.to_csv(DATA_DIR / 'cinc_manifest.csv', header=None, index=False)
 
 
-def experiment(train_conf) -> float:
+def hss_experiment(train_conf) -> float:
     phases = ['train', 'val', 'test']
 
     if train_conf['task_type'] == 'regress':
@@ -127,7 +130,7 @@ def experiment(train_conf) -> float:
     for phase in phases:
         process_func = Preprocessor(train_conf, phase, sr).preprocess
         load_func = set_load_func(sr, one_audio_sec)
-        dataset = ManualDataSet(train_conf[f'{phase}_path'], train_conf, load_func, process_func, label_func, phase)
+        dataset = ManualDataSet(train_conf[f'{phase}_path'], train_conf, load_func, process_func, hss_label_func, phase)
         dataloaders[phase] = DATALOADERS[train_conf['dataloader_type']](dataset, phase, train_conf)
 
     metrics = [
@@ -175,7 +178,7 @@ def cv_experiment(train_conf) -> float:
     ]
 
     load_func = set_load_func(sr, one_audio_sec)
-    train_manager = TrainManager(train_conf, load_func, label_func, dataset_cls, set_dataloader_func, metrics,
+    train_manager = TrainManager(train_conf, load_func, cinc_label_func, dataset_cls, set_dataloader_func, metrics,
                                  process_func=process_func)
     model_manager, test_cv_metrics = train_manager.train_test()
 
@@ -204,7 +207,7 @@ if __name__ == '__main__':
         load_func = set_load_func(sr=2000, one_audio_sec=60)
         process_func = Preprocessor(train_conf, phase='test', sr=2000).preprocess
         dataset = ManualDataSet(train_conf['manifest_path'], train_conf,
-                                load_func=load_func, label_func=label_func, process_func=process_func)
+                                load_func=load_func, label_func=cinc_label_func, process_func=process_func)
         dataloader = set_dataloader(dataset, 'test', train_conf)
         load_func = set_load_func(sr=2000, one_audio_sec=60)
 
@@ -212,7 +215,7 @@ if __name__ == '__main__':
         exit()
 
     if train_conf['data_source'] == 'HSS':
-        create_manifest()
+        create_hss_manifest()
     elif train_conf['data_source'] == 'CinC':
         create_cinc_manifest()
 
@@ -220,7 +223,7 @@ if __name__ == '__main__':
     for model in ['vgg', 'resnet', 'mobilenet', 'resnext', 'panns']:
     # for preprocess in ['spectrogram']:#, 'logmel']:
     # for model in supported_ml_models:
-    #     if model in ('wideresnet', 'resnext'): continue
+        if model not in ('resnet'): continue
         train_conf['model_type'] = model
         print(model)
     #     train_conf['transform'] = preprocess
@@ -228,9 +231,9 @@ if __name__ == '__main__':
         uar_res = []
 
         if train_conf['data_source'] == 'HSS':
-            for seed in range(3):
+            for seed in range(5):
                 train_conf['seed'] = seed
-                uar_res.append(experiment(train_conf))
+                uar_res.append(hss_experiment(train_conf))
         elif train_conf['data_source'] == 'CinC':
             uar_res.append(cv_experiment(train_conf))
 
