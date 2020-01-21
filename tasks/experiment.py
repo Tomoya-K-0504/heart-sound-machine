@@ -1,6 +1,7 @@
 import argparse
 import json
 from pathlib import Path
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -142,6 +143,7 @@ def hss_experiment(train_conf) -> float:
 
     model_manager.train()
     _, _, metrics = model_manager.test(return_metrics=True)
+    del model_manager.model
     uar = [metric for metric in metrics if metric.name == 'uar'][0]
 
     (Path(__file__).resolve().parent.parent / 'output' / 'params').mkdir(exist_ok=True)
@@ -172,15 +174,24 @@ def cv_experiment(train_conf) -> float:
     set_dataloader_func = set_dataloader
     process_func = Preprocessor(train_conf, phase='test', sr=sr).preprocess
 
-    metrics = [
+    train_val_metrics = [
         Metric('loss', direction='minimize', save_model=True),
         Metric('uar', direction='maximize'),
     ]
 
+    test_metrics = [
+        Metric('loss', direction='minimize', save_model=True),
+        Metric('uar', direction='maximize'),
+        Metric('recall_1', direction='maximize'),
+        Metric('specificity', direction='maximize'),
+        Metric('f1', direction='maximize'),
+    ]
+    metrics = {'train': deepcopy(train_val_metrics), 'val': train_val_metrics, 'test': test_metrics}
+
     load_func = set_load_func(sr, one_audio_sec)
     train_manager = TrainManager(train_conf, load_func, cinc_label_func, dataset_cls, set_dataloader_func, metrics,
                                  process_func=process_func)
-    model_manager, test_cv_metrics = train_manager.train_test()
+    model_manager, val_cv_metrics, test_cv_metrics = train_manager.train_test()
 
     (Path(__file__).resolve().parent.parent / 'output' / 'params').mkdir(exist_ok=True)
     with open(Path(__file__).resolve().parent.parent / 'output' / 'params' / f"{train_conf['log_id']}.txt", 'w') as f:
@@ -191,7 +202,7 @@ def cv_experiment(train_conf) -> float:
     metrics2df(test_cv_metrics, phase='test').to_csv(
         Path(__file__).resolve().parent.parent / 'output' / 'metrics' / f"{train_conf['log_id']}_test.csv", index=False)
 
-    return test_cv_metrics['uar'].mean()
+    return val_cv_metrics['uar'].mean(), test_cv_metrics
 
 
 if __name__ == '__main__':
@@ -199,6 +210,8 @@ if __name__ == '__main__':
     train_conf = vars(train_args(preprocess_args(parser)).parse_args())
     assert train_conf['train_path'] != '' or train_conf['val_path'] != '', \
         'You need to select training, validation data file to training, validation in --train-path, --val-path argments'
+    
+    test_metric_names = ['uar', 'recall_1', 'specificity', 'f1']
 
     if train_conf['gradcam']:
         # Gradcam
@@ -219,28 +232,43 @@ if __name__ == '__main__':
     elif train_conf['data_source'] == 'CinC':
         create_cinc_manifest()
 
-    results = []
-    for model in ['vgg', 'resnet', 'mobilenet', 'resnext', 'panns']:
+    results = {metric_name: [] for metric_name in test_metric_names}
+    val_results = []
+    for model in ['vgg16', 'vgg19', 'resnet', 'mobilenet', 'resnext']:
+    # for model in ['vgg16', 'vgg19']:
+    # for model in ['resnext101', 'resnext101_wsl']:
+
     # for preprocess in ['spectrogram']:#, 'logmel']:
     # for model in supported_ml_models:
-        if model not in ('resnet'): continue
+    #     if model not in ('resnet'): continue
+
         train_conf['model_type'] = model
         print(model)
-    #     train_conf['transform'] = preprocess
-    #     train_conf['log_id'] = 'mobilenet-' + preprocess
-        uar_res = []
+        #     train_conf['transform'] = preprocess
+        #     train_conf['log_id'] = 'mobilenet-' + preprocess
 
-        if train_conf['data_source'] == 'HSS':
-            for seed in range(5):
-                train_conf['seed'] = seed
-                uar_res.append(hss_experiment(train_conf))
-        elif train_conf['data_source'] == 'CinC':
-            uar_res.append(cv_experiment(train_conf))
+        for lr in [0.0001, 0.00001]:
+            train_conf['lr'] = lr
+            uar_res = {metric_name: [] for metric_name in test_metric_names}
+            val_uar_res = []
 
-        print(np.array(uar_res).mean())
-        print(np.array(uar_res).std())
-        results.append(np.array(uar_res).mean())
+            if train_conf['data_source'] == 'HSS':
+                for seed in range(5):
+                    train_conf['seed'] = seed
+                    uar_res.append(hss_experiment(train_conf))
+            elif train_conf['data_source'] == 'CinC':
+                val_uar, test_metrics = cv_experiment(train_conf)
+                val_uar_res.append(val_uar)
+                for metric_name in test_metric_names:
+                    uar_res[metric_name].append(test_metrics[metric_name].mean())
+
+            # print(np.array(uar_res).mean())
+            # print(np.array(uar_res).std())
+            val_results.append(np.array(val_uar_res).mean())
+            for metric_name in test_metric_names:
+                results[metric_name].append(np.array(uar_res[metric_name]).mean())
 
     expt_path = Path(__file__).resolve().parent.parent / 'output' / f"{train_conf['log_id']}.csv"
+    print(val_results)
     print(results)
     # pd.DataFrame(results, index=list(supported_pretrained_models.keys())).T.to_csv(expt_path, index=False)
