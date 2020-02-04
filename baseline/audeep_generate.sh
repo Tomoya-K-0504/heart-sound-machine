@@ -17,10 +17,10 @@
 # along with auDeep. If not, see <http://www.gnu.org/licenses/>.
 
 
-verbose_option=""
+#verbose_option=""
 
 # Uncomment for debugging of auDeep
-# verbose_option=" --verbose --debug"
+ verbose_option=" --verbose --debug"
 
 # Uncomment for debugging of shell script
 # set -x;
@@ -44,18 +44,19 @@ window_width="0.08"
 window_overlap="0.04"
 
 # Mel-scale spectrograms with 128 frequency bands are extracted
-mel_bands="128"
+mel_bands="64"
 
 # The ComParE 2020 Mask (M) audio files differ in length. By setting the --fixed-length option, we make sure that all
 # audio files are exactly 1 second long. This is achieved by cutting or zero-padding audio files as required.
-fixed_length="1"
+fixed_length="10"
 
 # We filter low amplitudes in the spectrograms, which eliminates some background noise. Our system normalises
 # spectrograms so that the maximum amplitude is 0 dB, and we filter amplitudes below -30 dB, -45 dB, -60 dB and -75 dB.
-clip_below_values="-30 -45 -60 -75"
+#clip_below_values="-30 -45 -60 -75"
+clip_below_values="-75"
 
 # Parser for the data set
-parser="audeep.backend.parsers.compare20_mask.Compare20MaskParser"
+parser="audeep.backend.parsers.hss15.Compare20MaskParser"
 
 # Base path for spectrogram files. auDeep automatically creates the required directories for us.
 spectrogram_base="${workspace}/input/spectrograms"
@@ -156,6 +157,7 @@ for clip_below_value in ${clip_below_values}; do
         echo
         audeep${verbose_option} t-rae generate --model-dir ${model_dir} --input ${spectrogram_file} --output ${representation_file}
     fi
+    exit 1
 done
 
 ##########################################################
