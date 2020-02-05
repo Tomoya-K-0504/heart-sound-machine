@@ -27,7 +27,7 @@ verbose_option=""
 
 export PYTHONUNBUFFERED=1
 
-taskName="HSS1-5_3-class"
+taskName="HSS1-5_binary"
 workspace="audeep_workspace"
 
 # base directory for audio files
@@ -56,7 +56,7 @@ clip_below_values="-30 -45 -60 -75"
 #clip_below_values="-75"
 
 # Parser for the data set
-parser="audeep.backend.parsers.hss15.HSS15Parser"
+parser="audeep.backend.parsers.hss15_binary.HSS15Parser"
 
 # Base path for spectrogram files. auDeep automatically creates the required directories for us.
 spectrogram_base="${workspace}/input/spectrograms"
