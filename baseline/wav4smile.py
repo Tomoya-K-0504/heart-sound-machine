@@ -1,12 +1,25 @@
+import argparse
 from pathlib import Path
 
 import librosa
 import numpy as np
 import soundfile as sf
 
+
+def extract_args(parser):
+    extract_parser = parser.add_argument_group("Experiment arguments")
+    extract_parser.add_argument('--output-wav-dir', help='Wave files folder', default='../input/wav')
+    extract_parser.add_argument('--input-wav-dir', help='Wave files folder', default='../input/wav')
+
+    return parser
+
+
 if __name__ == '__main__':
-    wav_dir = Path('../input/db15_binary/wav')
-    (wav_dir.parent / 'wav4smile').mkdir(exist_ok=True)
+    parser = argparse.ArgumentParser(description='train arguments')
+    extract_conf = vars(extract_args(parser).parse_args())
+
+    wav_dir = Path(extract_conf['input_wav_dir'])
+    Path(extract_conf['output_wav_dir']).mkdir(exist_ok=True)
     for path in wav_dir.iterdir():
         wav = librosa.load(path, sr=4000)[0].astype(np.float)
-        sf.write(wav_dir.parent / 'wav4smile' / path.name, wav, 4000, 'PCM_16')
+        sf.write(Path(extract_conf['output_wav_dir']) / path.name, wav, 4000, 'PCM_16')

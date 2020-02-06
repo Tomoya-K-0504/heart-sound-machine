@@ -67,7 +67,19 @@ conda create -n audeep python=3.5
 conda activate audeep
 cp ../src/hss15* auDeep/audeep/backend/parsers/
 pip install ./auDeep
-bash audeep_generate_binary.sh 
+bash audeep_generate_binary.sh ../input/db_binary/
 ```
 
 ### deepSpectrum
+This is the installation example using conda. Please see other install option [here](https://github.com/DeepSpectrum/DeepSpectrum)
+You need to execute those commands after auDeep setup ended.
+```
+git clone https://github.com/auDeep/auDeep.git
+git submodule update --init --recursive
+conda config --add channels pytorch
+conda config --add channels conda-forge
+conda create -n DeepSpectrum -c deepspectrum deepspectrum
+conda activate DeepSpectrum
+pip install ./auDeep
+bash deepspectrum_generate_binary.sh ../input/db_binary/
+```

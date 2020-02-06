@@ -24,7 +24,7 @@ taskName="HSS1-5_3-class"
 
 # base directory for audio files
 audio_base=$1
-output_base="../input/db15_3-class/features"
+output_base="$audio_base/features"
 melBands="64"
 
 # good choices can be "magma", "plasma", "viridis" or "cividis"

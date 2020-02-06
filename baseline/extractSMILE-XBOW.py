@@ -7,7 +7,7 @@ import pandas as pd
 
 # Modify openSMILE paths HERE:
 SMILE_PATH = 'opensmile-2.3.0/bin/linux_x64_standalone_static/SMILExtract'
-SMILE_CONF = 'opensmile-2.3.0/config/emobase_live4.conf'
+SMILE_CONF = 'opensmile-2.3.0/config/ComParE_2016.conf'
 
 
 def extract_args(parser):
@@ -15,6 +15,7 @@ def extract_args(parser):
     extract_parser.add_argument('--task-name', help='Name of the task', default='HSS1-5_binary')
     extract_parser.add_argument('--label-dir', help='Label files folder', default='../input/lab')
     extract_parser.add_argument('--wav-dir', help='Wave files folder', default='../input/wav')
+    extract_parser.add_argument('--out-dir', help='Feature files folder', default='../input/db15_binary/features/')
 
     return parser
 
@@ -27,7 +28,7 @@ def main(extract_conf):
     # Paths
     audio_folder = str(Path(extract_conf['wav_dir']).resolve()) + '/'
     labels_file = str(Path(extract_conf['label_dir']).resolve())
-    features_folder = '../input/processed/'
+    features_folder = extract_conf['out_dir']
     if not os.path.isdir(features_folder):
         os.mkdir(features_folder)
 
@@ -49,22 +50,18 @@ def main(extract_conf):
             os.remove(output_file_lld)
         # Extract openSMILE features for the whole partition (standard ComParE and LLD-only)
         for inst in instances_part:
-            for d in Path(SMILE_CONF).parent.iterdir():
-                if not d.name.endswith('.conf'):
-                    continue
-                os.system(SMILE_PATH + ' -C ' + str(d) + ' -I ' + audio_folder + inst + ' -instname ' + inst + ' -csvoutput '+ output_file + ' -timestampcsv 0 -lldcsvoutput ' + output_file_lld + ' -appendcsvlld 1')
-            exit()
+            os.system(SMILE_PATH + ' -C ' + SMILE_CONF + ' -I ' + audio_folder + inst + ' -instname ' + inst + ' -csvoutput '+ output_file + ' -timestampcsv 0 -lldcsvoutput ' + output_file_lld + ' -appendcsvlld 1')
 
         # Compute BoAW representations from openSMILE LLDs
-        # num_assignments = 10
-        # for csize in [125, 250]:
-        #     output_file_boaw = features_folder + task_name + '.BoAW-' + str(csize) + '.' + part + '.csv'
-        #     xbow_config = '-i ' + output_file_lld + ' -attributes nt1[65]2[65] -o ' + output_file_boaw
-        #     if part == 'train':
-        #         xbow_config += ' -standardizeInput -size ' + str(csize) + ' -a ' + str(num_assignments) + ' -log -B codebook_' + str(csize)
-        #     else:
-        #         xbow_config += ' -b codebook_' + str(csize)
-        #     os.system('java -Xmx12000m -jar openXBOW.jar -writeName ' + xbow_config)
+        num_assignments = 10
+        for csize in [125, 250]:
+            output_file_boaw = features_folder + task_name + '.BoAW-' + str(csize) + '.' + part + '.csv'
+            xbow_config = '-i ' + output_file_lld + ' -attributes nt1[65]2[65] -o ' + output_file_boaw
+            if part == 'train':
+                xbow_config += ' -standardizeInput -size ' + str(csize) + ' -a ' + str(num_assignments) + ' -log -B codebook_' + str(csize)
+            else:
+                xbow_config += ' -b codebook_' + str(csize)
+            os.system('java -Xmx12000m -jar openXBOW.jar -writeName ' + xbow_config)
 
 
 if __name__ == '__main__':
