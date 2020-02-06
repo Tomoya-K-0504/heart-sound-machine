@@ -11,6 +11,15 @@ pip install -r requirements.txt
 ```
 
 Next step: Move HSS1.5 database into "input" folder.
+```
+cd input/
+cp -r db1-5/ db15_binary/
+rm -r db15_binary/lab
+mv db15_binary/binary_lab db15_binary/lab
+
+cp -r db1-5/ db15_3-class/
+rm -r db15_3-class/binary_lab 
+```
 
 ## matlab install
 ```
@@ -41,9 +50,24 @@ unzip opensmile-2-3-0.zip
 
 Then, execute this after adjusting "label-dir" and "wav-dir"
 ```
-python extractSMILE-XBOW.py --label-dir ../input/db1-5/binary_lab --wav-dir ../input/db1-5/wav --task-name HSS1-5_binary
+python wav2smile.py
+python extractSMILE-XBOW.py --label-dir ../input/db15_binary/lab --wav-dir ../input/db15_binary/wav --task-name HSS1-5_binary
 ```
 This extracts both the ComParE feature set (6373 descriptors for each instance) and the 130 ComParE LLDs from the wav files of all partitions
 using openSMILE. Then, openXBOW computes different BoAW representations using codebooks of different sizes.
 All features are stored in the folder "features/".
 
+
+### auDeep
+1. Construct [auDeep](https://github.com/auDeep/auDeep) virtual environment. 
+```
+cd baseline
+git clone https://github.com/auDeep/auDeep.git
+conda create -n audeep python=3.5
+conda activate audeep
+cp ../src/hss15* auDeep/audeep/backend/parsers/
+pip install ./auDeep
+bash audeep_generate_binary.sh 
+```
+
+### deepSpectrum

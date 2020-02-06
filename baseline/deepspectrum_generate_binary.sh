@@ -20,11 +20,11 @@ verbose_option="-v"
 
 export PYTHONUNBUFFERED=1
 
-taskName="HSS1-5_3-class"
+taskName="HSS1-5_binary"
 
 # base directory for audio files
 audio_base=$1
-output_base="../input/db15_3-class/features"
+output_base="../input/db15_binary/features"
 melBands="64"
 
 # good choices can be "magma", "plasma", "viridis" or "cividis"
@@ -32,7 +32,7 @@ colourMap="magma"
 scale="mel"
 
 # Parser for the data set
-parser="audeep.backend.parsers.hss15.HSS15Parser"
+parser="audeep.backend.parsers.hss15_binary.HSS15Parser"
 
 # DeepSpectrum supports the following pre-trained CNN networks: vgg16, vgg19, resnet50, inception_resnet_v2, 
 # xception, densenet121, densenet169, densenet201, mobilenet, mobilenet_v2, nasnet_large, nasnet_mobile, alexnet, 
