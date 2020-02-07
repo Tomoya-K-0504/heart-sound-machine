@@ -4,6 +4,7 @@ from pathlib import Path
 import librosa
 import numpy as np
 import soundfile as sf
+from tqdm import tqdm
 
 
 def extract_args(parser):
@@ -20,6 +21,6 @@ if __name__ == '__main__':
 
     wav_dir = Path(extract_conf['input_wav_dir'])
     Path(extract_conf['output_wav_dir']).mkdir(exist_ok=True)
-    for path in wav_dir.iterdir():
+    for path in tqdm(wav_dir.iterdir(), total=len(wav_dir.iterdir())):
         wav = librosa.load(path, sr=4000)[0].astype(np.float)
         sf.write(Path(extract_conf['output_wav_dir']) / path.name, wav, 4000, 'PCM_16')

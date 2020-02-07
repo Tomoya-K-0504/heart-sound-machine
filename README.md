@@ -29,7 +29,7 @@ python setup.py install
 
 Ref: https://jp.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html
 
-## Baseline setup
+## Baseline features setup
 ### OpenXBOW and OpenSMILE
 "ComParE" is the standard feature set for the ComParE challenge, including functionals of 65 low-level descriptors (LLDs) and their deltas,
 totalling up to 6373 acoustic features. The feature set is extracted with the openSMILE toolkit.
@@ -50,8 +50,8 @@ unzip opensmile-2-3-0.zip
 
 Then, execute this after adjusting "label-dir" and "wav-dir"
 ```
-python wav2smile.py
-python extractSMILE-XBOW.py --label-dir ../input/db15_binary/lab --wav-dir ../input/db15_binary/wav --task-name HSS1-5_binary
+python wav4smile.py --input-wav-dir ../input/db15_binary/wav --output-wav-dir ../input/db15_binary/wav_smile
+python extractSMILE-XBOW.py --label-dir ../input/db15_binary/lab --wav-dir ../input/db15_binary/wav_smile --task-name HSS1-5_binary
 ```
 This extracts both the ComParE feature set (6373 descriptors for each instance) and the 130 ComParE LLDs from the wav files of all partitions
 using openSMILE. Then, openXBOW computes different BoAW representations using codebooks of different sizes.
@@ -83,3 +83,5 @@ conda activate DeepSpectrum
 pip install ./auDeep
 bash deepspectrum_generate_binary.sh ../input/db_binary/
 ```
+
+## Baseline evaluation (with Linear SVM)
