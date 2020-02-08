@@ -1,0 +1,5 @@
+tensorflow-gpu==1.15.0
+arff
+moviepy
+sklearn
+numpy
