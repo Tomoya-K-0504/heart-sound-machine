@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -5,7 +6,7 @@ import pandas as pd
 from librosa.core import load
 from librosa.output import write_wav
 from tqdm import tqdm
-import warnings
+
 warnings.filterwarnings('ignore')
 
 
@@ -25,7 +26,7 @@ def split_audio(audio, sr, audio_length=30, length=10, overlap=5):
 
 
 def main():
-    DATA_DIR = Path(__file__).resolve().parent / 'input'
+    DATA_DIR = Path(__file__).resolve().parents[1] / 'input'
     phases = ['train', 'devel', 'test']
     binary_label_converter = {0: 0, 1: 1, 2: 1}
 
@@ -47,30 +48,45 @@ def main():
     test[0] = dic['test']
     test.columns = ['file_name', 'label']
 
-    wav_out_dir = DATA_DIR / 'db1-5' / 'wav'
+    audio_length = 30
+    length = 10
+    overlap = 5
+
+    wav_out_dir = DATA_DIR / 'db1-5_production' / 'wav'
     wav_out_dir.mkdir(exist_ok=True, parents=True)
 
-    for phase, df in tqdm(zip(phases, [train, dev, test]), total=3):
-        label_dic = {'file_name': [], 'label': []}
-        binary_label_dic = {'file_name': [], 'label': []}
+    for phase, df in tqdm(zip(phases, [train.reset_index(drop=True), dev.reset_index(drop=True), test]), total=3):
+        label_dic = {'file_name': [], 'label': [], 'index': []}
+        binary_label_dic = {'file_name': [], 'label': [], 'index': []}
 
-        for _, row in df.iterrows():
+        len_sections = (audio_length - length) // overlap + 1
+        index_list = list(range(1, len(df) * len_sections + 1))
+        np.random.shuffle(index_list)
+        count = 0
+
+        for i, row in df.iterrows():
             wave, sr = load(row['file_name'], sr=4000)
-            wave_sections = split_audio(wave, sr=sr)
-            for i, section in enumerate(wave_sections):
-                file_name = Path(row['file_name']).name.replace('.wav', f'_{i + 1}.wav')
-                write_wav(wav_out_dir / file_name, section, sr)
+            wave_sections = split_audio(wave, sr=sr, audio_length=audio_length, length=length, overlap=overlap)
+            for j, section in enumerate(wave_sections):
+                # file_name = Path(row['file_name']).name.replace('.wav', f'_{i + 1}.wav')
+                file_name = f'{phase}_{index_list[i * len_sections + j]:04}.wav'
+                write_wav(str(wav_out_dir / file_name), section, sr)
                 label_dic['file_name'].append(file_name)
                 label_dic['label'].append(row['label'])
+                label_dic['index'].append(index_list[i * len_sections + j])
                 binary_label_dic['file_name'].append(file_name)
                 binary_label_dic['label'].append(binary_label_converter[row['label']])
+                binary_label_dic['index'].append(index_list[i * len_sections + j])
+                count += 1
 
-        (wav_out_dir.parent / 'lab').mkdir(exist_ok=True)
+        assert count == len(index_list)
+
+        (wav_out_dir.parent / '3-class_lab').mkdir(exist_ok=True)
         (wav_out_dir.parent / 'binary_lab').mkdir(exist_ok=True)
-        label_file_path = wav_out_dir.parent / 'lab' / f'labels_{phase}.tsv'
-        pd.DataFrame(label_dic).to_csv(label_file_path, index=False, sep='\t')
+        label_file_path = wav_out_dir.parent / '3-class_lab' / f'labels_{phase}.tsv'
+        pd.DataFrame(label_dic).sort_values('index').drop('index', axis=1).to_csv(label_file_path, index=False, sep='\t')
         label_file_path = wav_out_dir.parent / 'binary_lab' / f'labels_{phase}.tsv'
-        pd.DataFrame(binary_label_dic).to_csv(label_file_path, index=False, sep='\t')
+        pd.DataFrame(binary_label_dic).sort_values('index').drop('index', axis=1).to_csv(label_file_path, index=False, sep='\t')
 
 
 if __name__ == '__main__':

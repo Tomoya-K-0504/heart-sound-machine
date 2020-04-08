@@ -84,4 +84,18 @@ pip install ./auDeep
 bash deepspectrum_generate_binary.sh ../input/db_binary/
 ```
 
+### [end2you](https://github.com/end2you/end2you)
+Build tensorflow 1.4 with cuda
+```
+sudo apt install curl
+curl https://bazel.build/bazel-release.pub.gpg | sudo apt-key add -
+echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | sudo tee /etc/apt/sources.list.d/bazel.list
+sudo apt-get update && sudo apt-get install -y bazel
+git clone git@github.com:tensorflow/tensorflow.git -b r1.4
+```
+
+```
+git clone https://github.com/end2you/end2you.git
+```
+
 ## Baseline evaluation (with Linear SVM)
